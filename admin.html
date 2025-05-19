@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sizel Admin Panel</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      background-color: #fff7f0;
+    }
+    h1 {
+      color: #d6001c;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 300px;
+      margin-bottom: 2rem;
+    }
+    input, select, button {
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 2px solid #d6001c;
+      border-radius: 0.5rem;
+    }
+    button {
+      background-color: #ffcc00;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .order-item {
+      border: 2px solid #d6001c;
+      border-radius: 1rem;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background-color: #ffffff;
+    }
+    .order-header {
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+    .order-controls {
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+    .ready {
+      color: green;
+    }
+    .prepping {
+      color: orange;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sizel Admin Panel</h1>
+
+  <!-- Form tambah order -->
+  <form id="orderForm">
+    <input type="text" id="orderNumber" placeholder="#1234" required>
+    <select id="orderStatus">
+      <option value="Prepping">Prepping</option>
+      <option value="Ready">Ready</option>
+    </select>
+    <button type="submit">Tambah Order</button>
+  </form>
+
+  <!-- Daftar order -->
+  <div id="orderList"></div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2pHHnNXVjEpi6UsfxYclELLW9FWkYOjQ",
+      authDomain: "sizel-order-board.firebaseapp.com",
+      projectId: "sizel-order-board",
+      storageBucket: "sizel-order-board.firebasestorage.app",
+      messagingSenderId: "256676290641",
+      appId: "1:256676290641:web:c88c8b2d4e4e011e415870",
+      measurementId: "G-C9YWH7RVQ3"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const form = document.getElementById("orderForm");
+    const orderList = document.getElementById("orderList");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const number = document.getElementById("orderNumber").value.trim();
+      const status = document.getElementById("orderStatus").value;
+
+      if (!number) return alert("Nomor order harus diisi!");
+
+      await db.collection("orders").add({
+        number,
+        status,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      form.reset();
+    });
+
+    // Listen dan tampilkan order
+    db.collection("orders").orderBy("timestamp", "desc")
+      .onSnapshot(snapshot => {
+        orderList.innerHTML = "";
+        snapshot.forEach(doc => {
+          const order = doc.data();
+          const id = doc.id;
+
+          const div = document.createElement("div");
+          div.className = "order-item";
+          div.innerHTML = `
+            <div class="order-header">${order.number}</div>
+            <div class="${order.status === 'Ready' ? 'ready' : 'prepping'}">Status: ${order.status}</div>
+            <div class="order-controls">
+              <button onclick="toggleStatus('${id}', '${order.status}')">Toggle Status</button>
+              <button onclick="deleteOrder('${id}')">Hapus</button>
+            </div>
+          `;
+          orderList.appendChild(div);
+        });
+      });
+
+    // Ganti status Ready ⇄ Prepping
+    function toggleStatus(id, currentStatus) {
+      const newStatus = currentStatus === "Ready" ? "Prepping" : "Ready";
+      db.collection("orders").doc(id).update({
+        status: newStatus
+      });
+    }
+
+    // Hapus order
+    function deleteOrder(id) {
+      db.collection("orders").doc(id).delete();
+    }
+  </script>
+</body>
+</html>
